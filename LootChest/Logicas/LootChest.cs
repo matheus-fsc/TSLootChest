@@ -15,14 +15,15 @@ namespace LootChest.Logicas
     [ApiVersion(2, 1)]
     public class LootChestPlugin : TerrariaPlugin
     {
-        public override string Name => "IndividualLootChests";
-        public override Version Version => new Version(1, 2);
-        public override string Author => "Matheus Coelho";
-        public override string Description => "Baús com loot individual para cada jogador.";
-
+        public static bool logChestOpen = false;
         private Dictionary<(int, int), ChestState> chestStates = new Dictionary<(int, int), ChestState>();
         private readonly object chestLock = new object(); // Objeto para sincronização
         private HashSet<(int, int)> chestsInUse = new HashSet<(int, int)>(); // Baús em uso
+
+        public override string Name => "IndividualLootChests";
+        public override Version Version => new Version(2, 0);
+        public override string Author => "Matheus Coelho, Adriel Cunha";
+        public override string Description => "Baús com loot individual para cada jogador.";
 
         public LootChestPlugin(Main game) : base(game)
         {
@@ -32,86 +33,44 @@ namespace LootChest.Logicas
         {
             ChestDatabase.InitializeDatabase();
             GetDataHandlers.ChestOpen += OnChestOpen;
-            GetDataHandlers.PlaceChest += HandlePlaceChest;
-            Commands.ChatCommands.Add(new Command(AddChestCommand, "addchest"));
-            Commands.ChatCommands.Add(new Command(RemoveChestCommand, "remchest"));
+            GetDataHandlers.PlaceChest += playerPlaceChest;
+            GetDataHandlers.PlaceChest += protectLootChest;
+            Commands.ChatCommands.Add(new Command(Comandos.AddChestCommand, "addchest"));
+            Commands.ChatCommands.Add(new Command(Comandos.RemoveChestCommand, "remchest"));
+            Commands.ChatCommands.Add(new Command(Comandos.ToggleLogChestOpen, "togglelogchest"));
 
         }
 
-        
-
-
-        private void HandlePlaceChest(object? sender, PlaceChestEventArgs args)
+        private void playerPlaceChest(object? sender, PlaceChestEventArgs args)
         {
             // Lógica para quando um baú é colocado ou removido
             TSPlayer player = args.Player;
             int x = args.TileX;
             int y = args.TileY - 1;
-            int flag = args.Flag;
-            TShock.Log.Info($"Flag: {flag}");
-            if (flag == 0)
+            if (args.Flag == 0)
             {
-                TShock.Log.Info($"Baú colocado em: X={x}, Y={y}");
+                TShock.Log.Info($"Salvando baú em: X={x}, Y={y}");
                 ChestDatabase.SavePlacedChest(x, y);
             }
-            else if (flag == 1)
+            else if (args.Flag == 1)
             {
                 TShock.Log.Info($"Baú removido em: X={x}, Y={y}");
                 ChestDatabase.RemovePlacedChest(x, y);
             }
         }
 
-        // Método para adicionar um baú
-        public void AddChestCommand(CommandArgs args)
+        void protectLootChest(object? sender, PlaceChestEventArgs args)
         {
-            var player = args.Player;
+            var player = TShock.Players[args.Player.Index];
+            bool isProtected = ChestDatabase.IsPlacedByPlayer(args.TileX, args.TileY) ||
+                               ChestDatabase.IsPlacedByPlayer(args.TileX + 1, args.TileY) ||
+                               ChestDatabase.IsPlacedByPlayer(args.TileX, args.TileY + 1) ||
+                               ChestDatabase.IsPlacedByPlayer(args.TileX + 1, args.TileY + 1);
 
-            if (args.Parameters.Count < 2 ||
-                !int.TryParse(args.Parameters[0], out int x) ||
-                !int.TryParse(args.Parameters[1], out int y))
+            if (args.Flag == 1 && !isProtected)
             {
-                player.SendErrorMessage("Uso: /addchest <X> <Y>");
-                return;
-            }
-
-            // Verifica se há um baú nas coordenadas
-            if (!TileID.Sets.BasicChest[Main.tile[x, y].type])
-            {
-                player.SendErrorMessage("Não há um baú nessas coordenadas.");
-                return;
-            }
-
-            if (Main.chest.Any(c => c != null && c.x == x && c.y == y))
-            {
-                ChestDatabase.SavePlacedChest(x, y);
-                player.SendSuccessMessage($"Baú adicionado com sucesso nas coordenadas ({x}, {y}).");
-            }
-            else
-            {
-                player.SendErrorMessage("Nenhum baú encontrado nessas coordenadas.");
-            }
-        }
-
-        // Método para remover um baú
-        public void RemoveChestCommand(CommandArgs args)
-        {
-            var player = args.Player;
-
-            if (args.Parameters.Count < 2 ||
-                !int.TryParse(args.Parameters[0], out int x) ||
-                !int.TryParse(args.Parameters[1], out int y))
-            {
-                player.SendErrorMessage("Uso: /remchest <X> <Y>");
-                return;
-            }
-
-            if (ChestDatabase.RemovePlacedChest(x, y))
-            {
-                player.SendSuccessMessage($"Baú removido com sucesso nas coordenadas ({x}, {y}).");
-            }
-            else
-            {
-                player.SendErrorMessage("Nenhum baú encontrado nessas coordenadas ou o baú não foi colocado por um jogador.");
+                player.SendErrorMessage("Proibido quebrar baús de loot");
+                args.Handled = true; // Bloqueia a remoção do baú
             }
         }
 
@@ -122,6 +81,12 @@ namespace LootChest.Logicas
             return distance < 256; // 16 tiles = 256 pixels
         }
 
+        // Verifica se o baú está vazio
+        private bool IsChestEmpty(Chest chest)
+        {
+            return chest.item.All(item => item.IsAir);
+        }
+
         // Monitora a distância do jogador em relação ao baú
         private async Task MonitorPlayerDistance(TSPlayer player, Chest chest)
         {
@@ -129,16 +94,35 @@ namespace LootChest.Logicas
             {
                 while (player.Active && IsPlayerCloseToChest(player, chest))
                 {
-                    await Task.Delay(1000); // Verifica a cada 1 segundo
+                    if (IsChestEmpty(chest))
+                    {
+                        player.SendErrorMessage("Você esvaziou o baú. Permissão bloqueada.");
+                        // Bloqueia a permissão do jogador aqui
+                        RestoreChest(chest);
+                        return;
+                    }
+                    await Task.Delay(500); // Verifica a cada 0.5 segundo
                 }
 
                 // Quando o jogador se afasta, restaure o baú
                 RestoreChest(chest);
+
+               
+                if (IsChestEmpty(chest))
+                {
+                    CloseChest(chest);
+                }
             }
             catch (Exception ex)
             {
                 TShock.Log.Error($"Erro ao monitorar distância do jogador: {ex.Message}");
             }
+        }
+
+        private void CloseChest(Chest chest)
+        {
+            chest.item = new Item[chest.item.Length];
+            NetMessage.SendData((int)PacketTypes.ChestItem, -1, -1, null, chest.x, chest.y);
         }
 
         public class ChestState
@@ -152,10 +136,10 @@ namespace LootChest.Logicas
                 OriginalItemQuantities = items.Select(item => item.stack).ToArray(); // Armazena as quantidades dos itens
             }
         }
-
         private void OnChestOpen(object? sender, GetDataHandlers.ChestOpenEventArgs args)
         {
-            TShock.Log.Info($"Baú aberto em: X={args.X}, Y={args.Y}");
+            if(logChestOpen)
+            TShock.Log.ConsoleInfo($" {args.Player.Name} abriu um baú em X={args.X}, Y={args.Y}.");
 
             var player = TShock.Players[args.Player.Index];
 
@@ -223,8 +207,8 @@ namespace LootChest.Logicas
             if (disposing)
             {
                 GetDataHandlers.ChestOpen -= OnChestOpen;
-                GetDataHandlers.PlaceChest -= HandlePlaceChest;
-
+                GetDataHandlers.PlaceChest -= playerPlaceChest;
+                GetDataHandlers.PlaceChest -= protectLootChest;
             }
             base.Dispose(disposing);
         }

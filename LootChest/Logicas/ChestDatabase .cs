@@ -6,12 +6,20 @@ namespace LootChest.Logicas
 {
     public class ChestDatabase
     {
-        private static string dbPath = "chests.sqlite";
+        private static string DirectoryPath = Path.Combine(TShock.SavePath, "LootChest");
+        private static string dbPath = Path.Combine(DirectoryPath, "chests.sqlite");
 
         public static void InitializeDatabase()
         {
             try
             {
+                // Cria o diretório se ele não existir
+                if (!Directory.Exists(DirectoryPath))
+                {
+                    Directory.CreateDirectory(DirectoryPath);
+                    TShock.Log.ConsoleInfo("Diretório do banco de dados criado.");
+                }
+
                 using (var connection = new SqliteConnection($"Data Source={dbPath};"))
                 {
                     connection.Open();
@@ -37,7 +45,7 @@ namespace LootChest.Logicas
                     ";
                     command.ExecuteNonQuery();
 
-                    TShock.Log.ConsoleInfo("Banco de dados ainda não existe, criando um!");
+                    TShock.Log.ConsoleInfo("Banco de dados inicializado com sucesso.");
                 }
             }
             catch (Exception ex)
@@ -55,9 +63,17 @@ namespace LootChest.Logicas
                     connection.Open();
 
                     var command = connection.CreateCommand();
-                    command.CommandText = "INSERT OR IGNORE INTO PlacedChests (ChestX, ChestY) VALUES (@x, @y);";
-                    command.Parameters.AddWithValue("@x", x);
-                    command.Parameters.AddWithValue("@y", y);
+                    command.CommandText = @"
+                        INSERT OR IGNORE INTO PlacedChests (ChestX, ChestY) VALUES (@x1, @y1), (@x2, @y2), (@x3, @y3), (@x4, @y4);
+                    ";
+                    command.Parameters.AddWithValue("@x1", x);
+                    command.Parameters.AddWithValue("@y1", y);
+                    command.Parameters.AddWithValue("@x2", x + 1);
+                    command.Parameters.AddWithValue("@y2", y);
+                    command.Parameters.AddWithValue("@x3", x);
+                    command.Parameters.AddWithValue("@y3", y + 1);
+                    command.Parameters.AddWithValue("@x4", x + 1);
+                    command.Parameters.AddWithValue("@y4", y + 1);
                     command.ExecuteNonQuery();
                 }
             }
@@ -143,9 +159,17 @@ namespace LootChest.Logicas
                     connection.Open();
 
                     var command = connection.CreateCommand();
-                    command.CommandText = "DELETE FROM PlacedChests WHERE ChestX = @x AND ChestY = @y;";
-                    command.Parameters.AddWithValue("@x", x);
-                    command.Parameters.AddWithValue("@y", y);
+                    command.CommandText = @"
+                        DELETE FROM PlacedChests WHERE (ChestX = @x1 AND ChestY = @y1) OR (ChestX = @x2 AND ChestY = @y2) OR (ChestX = @x3 AND ChestY = @y3) OR (ChestX = @x4 AND ChestY = @y4);
+                    ";
+                    command.Parameters.AddWithValue("@x1", x);
+                    command.Parameters.AddWithValue("@y1", y);
+                    command.Parameters.AddWithValue("@x2", x + 1);
+                    command.Parameters.AddWithValue("@y2", y);
+                    command.Parameters.AddWithValue("@x3", x);
+                    command.Parameters.AddWithValue("@y3", y - 1);
+                    command.Parameters.AddWithValue("@x4", x + 1);
+                    command.Parameters.AddWithValue("@y4", y - 1);
                     int rowsAffected = command.ExecuteNonQuery();
 
                     return rowsAffected > 0;
