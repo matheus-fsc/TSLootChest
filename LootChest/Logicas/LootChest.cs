@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
+using Org.BouncyCastle.Math.EC.Rfc7748;
 using Terraria;
 using Terraria.ID;
 using TerrariaApi.Server;
@@ -15,14 +16,14 @@ namespace LootChest.Logicas
     [ApiVersion(2, 1)]
     public class LootChestPlugin : TerrariaPlugin
     {
-        public static bool logChestOpen = false;
+        public static bool logChest = false;
         private Dictionary<(int, int), ChestState> chestStates = new Dictionary<(int, int), ChestState>();
         private readonly object chestLock = new object(); // Objeto para sincronização
         private HashSet<(int, int)> chestsInUse = new HashSet<(int, int)>(); // Baús em uso
 
         public override string Name => "IndividualLootChests";
-        public override Version Version => new Version(2, 0);
-        public override string Author => "Matheus Coelho, Adriel Cunha";
+        public override Version Version => new Version(1, 2);
+        public override string Author => "Matheus Coelho";
         public override string Description => "Baús com loot individual para cada jogador.";
 
         public LootChestPlugin(Main game) : base(game)
@@ -37,9 +38,8 @@ namespace LootChest.Logicas
             GetDataHandlers.PlaceChest += protectLootChest;
             Commands.ChatCommands.Add(new Command(Comandos.AddChestCommand, "addchest"));
             Commands.ChatCommands.Add(new Command(Comandos.RemoveChestCommand, "remchest"));
-            Commands.ChatCommands.Add(new Command(Comandos.ToggleLogChestOpen, "togglelogchest"));
-
         }
+
 
         private void playerPlaceChest(object? sender, PlaceChestEventArgs args)
         {
@@ -47,6 +47,7 @@ namespace LootChest.Logicas
             TSPlayer player = args.Player;
             int x = args.TileX;
             int y = args.TileY - 1;
+            //TShock.Log.Info($"Flag: {args.Flag}, Coordenadas: X={x}, Y={y}");
             if (args.Flag == 0)
             {
                 TShock.Log.Info($"Salvando baú em: X={x}, Y={y}");
@@ -59,8 +60,10 @@ namespace LootChest.Logicas
             }
         }
 
+
         void protectLootChest(object? sender, PlaceChestEventArgs args)
         {
+            //TShock.Log.ConsoleInfo($"Verificando proteção para coord: {args.TileX}, {args.TileY}");
             var player = TShock.Players[args.Player.Index];
             bool isProtected = ChestDatabase.IsPlacedByPlayer(args.TileX, args.TileY) ||
                                ChestDatabase.IsPlacedByPlayer(args.TileX + 1, args.TileY) ||
@@ -74,17 +77,13 @@ namespace LootChest.Logicas
             }
         }
 
+
+
         // Verifica se o jogador está perto do baú
         private bool IsPlayerCloseToChest(TSPlayer player, Chest chest)
         {
             float distance = Vector2.Distance(player.TPlayer.position, new Vector2(chest.x * 16, chest.y * 16));
             return distance < 256; // 16 tiles = 256 pixels
-        }
-
-        // Verifica se o baú está vazio
-        private bool IsChestEmpty(Chest chest)
-        {
-            return chest.item.All(item => item.IsAir);
         }
 
         // Monitora a distância do jogador em relação ao baú
@@ -94,35 +93,16 @@ namespace LootChest.Logicas
             {
                 while (player.Active && IsPlayerCloseToChest(player, chest))
                 {
-                    if (IsChestEmpty(chest))
-                    {
-                        player.SendErrorMessage("Você esvaziou o baú. Permissão bloqueada.");
-                        // Bloqueia a permissão do jogador aqui
-                        RestoreChest(chest);
-                        return;
-                    }
-                    await Task.Delay(500); // Verifica a cada 0.5 segundo
+                    await Task.Delay(500); // Verifica a cada 1 segundo
                 }
 
                 // Quando o jogador se afasta, restaure o baú
                 RestoreChest(chest);
-
-               
-                if (IsChestEmpty(chest))
-                {
-                    CloseChest(chest);
-                }
             }
             catch (Exception ex)
             {
                 TShock.Log.Error($"Erro ao monitorar distância do jogador: {ex.Message}");
             }
-        }
-
-        private void CloseChest(Chest chest)
-        {
-            chest.item = new Item[chest.item.Length];
-            NetMessage.SendData((int)PacketTypes.ChestItem, -1, -1, null, chest.x, chest.y);
         }
 
         public class ChestState
@@ -136,10 +116,11 @@ namespace LootChest.Logicas
                 OriginalItemQuantities = items.Select(item => item.stack).ToArray(); // Armazena as quantidades dos itens
             }
         }
+
         private void OnChestOpen(object? sender, GetDataHandlers.ChestOpenEventArgs args)
-        {
-            if(logChestOpen)
-            TShock.Log.ConsoleInfo($" {args.Player.Name} abriu um baú em X={args.X}, Y={args.Y}.");
+        {   
+            if(logChest)
+            TShock.Log.ConsoleInfo($"Baú aberto em: X={args.X}, Y={args.Y}");
 
             var player = TShock.Players[args.Player.Index];
 
@@ -154,6 +135,7 @@ namespace LootChest.Logicas
             {
                 return;
             }
+
 
             // Verifica se o baú foi colocado pelo jogador
             if (ChestDatabase.IsPlacedByPlayer(chest.x, chest.y))
