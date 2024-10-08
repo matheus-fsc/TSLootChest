@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Terraria;
 using TShockAPI;
 using Terraria.ID;
@@ -45,7 +45,7 @@ namespace LootChest.Logicas
                 return;
             }
 
-            LootChestPlugin.logChestOpen = enable;
+            LootChestPlugin.logChest = enable;
             args.Player.SendSuccessMessage($"Log de abertura de baús {(enable ? "ativado" : "desativado")}.");
         }
 
