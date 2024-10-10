@@ -83,7 +83,7 @@ namespace LootChest.Logicas
         private bool IsPlayerCloseToChest(TSPlayer player, Chest chest)
         {
             float distance = Vector2.Distance(player.TPlayer.position, new Vector2(chest.x * 16, chest.y * 16));
-            return distance < 256; // 16 tiles = 256 pixels
+            return distance < 80; // 16 tiles = 256 pixels 5 tiles == 80
         }
 
         // Monitora a distância do jogador em relação ao baú
