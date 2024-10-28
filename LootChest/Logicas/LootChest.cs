@@ -38,6 +38,7 @@ namespace LootChest.Logicas
             GetDataHandlers.PlaceChest += protectLootChest;
             Commands.ChatCommands.Add(new Command(Comandos.AddChestCommand, "addchest"));
             Commands.ChatCommands.Add(new Command(Comandos.RemoveChestCommand, "remchest"));
+            Commands.ChatCommands.Add(new Command(Comandos.ToggleLogChestOpen, "togglelogchest"));
         }
 
 
@@ -118,12 +119,15 @@ namespace LootChest.Logicas
         }
 
         private void OnChestOpen(object? sender, GetDataHandlers.ChestOpenEventArgs args)
-        {   
-            if(logChest)
-            TShock.Log.ConsoleInfo($"Baú aberto em: X={args.X}, Y={args.Y}");
-
+        {
             var player = TShock.Players[args.Player.Index];
 
+            if (logChest)
+            {
+                player.SendMessage($"Baú aberto em: X={args.X}, y={args.Y}", Color.Yellow);
+                TShock.Log.ConsoleInfo($"Baú aberto em: X={args.X}, Y={args.Y}");
+            }
+            
             if (player == null || !player.Active)
             {
                 return;

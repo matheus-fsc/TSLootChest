@@ -37,14 +37,10 @@ namespace LootChest.Logicas
                 player.SendErrorMessage("Nenhum baú encontrado nessas coordenadas.");
             }
         }
+
         public static void ToggleLogChestOpen(CommandArgs args)
         {
-            if (args.Parameters.Count != 1 || !bool.TryParse(args.Parameters[0], out bool enable))
-            {
-                args.Player.SendErrorMessage("Uso: /togglelogchest <true|false>");
-                return;
-            }
-
+            bool enable = !LootChestPlugin.logChest;
             LootChestPlugin.logChest = enable;
             args.Player.SendSuccessMessage($"Log de abertura de baús {(enable ? "ativado" : "desativado")}.");
         }
