@@ -27,7 +27,7 @@ The TSLootChest plugin allows each player to have individual loot chests on the 
 
 ### Additional Information
 
-- The purpose of the commands is primarily for cases where the plugin is implemented in an existing world with pre-existing chests. In such cases, the log is activated to capture the chest coordinates by interacting with it using the right-click and then adding it with `/addchest` to make it a player chest. This step is necessary as the plugin cannot automatically identify player chests unless they are added to the database.
+- The purpose of the commands is primarily for cases where the plugin is implemented in an existing world with pre-existing chests. In such cases, the log is activated to capture the chest coordinates by interacting with it using the right-click and then adding it with `/addchest` to make it a player chest. This step is necessary as the plugin cannot automatically identify player chests unless they are added to the database. To assist players in checking the coordinates, they can use the `/togglelogchest` command to enable logging and interact with the chest to view the coordinates, then add it as a player chest with `/addchest` using the displayed coordinates.
 - The plugin logs key events, such as placing and removing chests, providing traceability for player actions.
 - Since Terraria already prevents multiple players from accessing a chest at the same time, this plugin enhances that functionality by storing individual loot for each player to prevent conflicts and duplications.
 
