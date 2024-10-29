@@ -21,9 +21,9 @@ The TSLootChest plugin allows each player to have individual loot chests on the 
    - **Example**: `/remchest 100 150`
 
 3. **Toggle Chest Log**
-   - **Command**: `/togglelogchest <true|false>`
-   - **Description**: Enables or disables the logging of chest openings.
-   - **Example**: `/togglelogchest true`
+   - **Command**: `/togglelogchest`
+   - **Description**: Enables or disables the logging of chest coord openings.
+   - **Example**: `/togglelogchest`
 
 ### Additional Information
 
