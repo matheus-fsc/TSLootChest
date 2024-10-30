@@ -12,12 +12,12 @@ The TSLootChest plugin allows each player to have individual loot chests on the 
 
 1. **Add Chest**
    - **Command**: `/addchest <X> <Y>`
-   - **Description**: Adds a chest at the specified coordinates if a valid chest exists.
+   - **Description**: This command adds a chest at the specified coordinates if a valid chest exists at those coordinates. Upon execution, the plugin validates the chest as a player chest, recording its information in the database. This ensures that the chest becomes removable and is not auto-restorable, allowing players to manage their chests individually.
    - **Example**: `/addchest 100 150`
 
 2. **Remove Chest**
    - **Command**: `/remchest <X> <Y>`
-   - **Description**: Removes a chest at the specified coordinates if the chest was placed by a player.
+   - **Description**: This command removes a chest at the specified coordinates if the chest was placed by a player. When a chest is removed, its information is deleted from the database, making it auto-restorable again for future use.
    - **Example**: `/remchest 100 150`
 
 3. **Toggle Chest Log**
