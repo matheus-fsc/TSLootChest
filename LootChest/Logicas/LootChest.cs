@@ -22,8 +22,8 @@ namespace LootChest.Logicas
         private HashSet<(int, int)> chestsInUse = new HashSet<(int, int)>(); // Baús em uso
 
         public override string Name => "IndividualLootChests";
-        public override Version Version => new Version(1, 2);
-        public override string Author => "Matheus Coelho";
+        public override Version Version => new Version(1, 3);
+        public override string Author => "matheus-fsc";
         public override string Description => "Baús com loot individual para cada jogador.";
 
         public LootChestPlugin(Main game) : base(game)
